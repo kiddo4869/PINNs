@@ -5,6 +5,7 @@ import logging
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+from pyDOE import lhs               # Latin Hypercube Sampling
 
 import torch
 import torch.nn as nn
@@ -22,8 +23,31 @@ print("device:", device)
 def analytical_solution(x: Tensor, y: Tensor) -> Tensor:
     return torch.sin(2 * np.pi * x) * torch.sin(2 * np.pi * y)
 
-def training_data(N: int) -> Tuple[Tensor, Tensor, Tensor]:
-    pass
+def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int) -> Tuple[Tensor, Tensor, Tensor]:
+    
+    # boundary conditions
+    leftedge_inputs = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
+    leftedge_phi = phi[:, 0].reshape(-1, 1)
+    
+    rightedge_inputs = np.hstack((X[:, -1].reshape(-1, 1), Y[:, -1].reshape(-1, 1)))
+    rightedge_phi = phi[:, -1].reshape(-1, 1)
+    
+    topedge_inputs = np.hstack((X[0, :].reshape(-1, 1), Y[0, :].reshape(-1, 1)))
+    topedge_phi = phi[0, :].reshape(-1, 1)
+    
+    bottomedge_inputs = np.hstack((X[-1, :].reshape(-1, 1), Y[-1, :].reshape(-1, 1)))
+    bottomedge_phi = phi[-1, :].reshape(-1, 1)
+
+    boundary_inputs = np.vstack([leftedge_inputs, rightedge_inputs, topedge_inputs, bottomedge_inputs])
+    boundary_phi = np.vstack([leftedge_phi, rightedge_phi, topedge_phi, bottomedge_phi])
+
+    # sample random points in the domain
+    idx = np.random.choice(boundary_inputs.shape[0], N_sample, replace=False)
+    
+    sampled_boundary_inputs = boundary_inputs[idx, :]
+    sampled_boundary_phi = boundary_phi[idx, :]
+
+    return 0, sampled_boundary_inputs, sampled_boundary_phi
 
 def main(args: argparse.Namespace):
 
@@ -42,19 +66,10 @@ def main(args: argparse.Namespace):
     x = torch.linspace(0, 1, N)
     y = torch.linspace(0, 1, N)
     X, Y = torch.meshgrid(x, y)
-    phi = analytical_solution(X, Y).reshape(-1, 1)
+    phi = analytical_solution(X, Y)
 
-    # boundary conditions
-    leftedge_x = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
-    leftedge_x = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
-    leftedge_x = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
-    leftedge_x = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
+    haha = training_data(X, Y, phi, N)
     
-    print(leftedge_x)
-    leftedge_u = phi[:,0][:,None]
-    
-    print(leftedge_x.shape)
-    print(leftedge_u.shape)
     exit()
     # Domain bounds
     lb = np.array([-1, -1]) #lower bound
