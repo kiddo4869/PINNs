@@ -23,7 +23,7 @@ print("device:", device)
 def analytical_solution(x: Tensor, y: Tensor) -> Tensor:
     return torch.sin(2 * np.pi * x) * torch.sin(2 * np.pi * y)
 
-def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int) -> Tuple[Tensor, Tensor, Tensor]:
+def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int, N_collocation: int) -> Tuple[Tensor, Tensor, Tensor]:
     
     # boundary conditions
     leftedge_inputs = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
@@ -43,11 +43,19 @@ def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int) -> Tuple[Ten
 
     # sample random points in the domain
     idx = np.random.choice(boundary_inputs.shape[0], N_sample, replace=False)
-    
+
     sampled_boundary_inputs = boundary_inputs[idx, :]
     sampled_boundary_phi = boundary_phi[idx, :]
 
-    return 0, sampled_boundary_inputs, sampled_boundary_phi
+    # Domain bounds
+    lb = np.array([0, 0])  # lower bound
+    ub = np.array([1, 1])  # upper bound
+
+    # Collocation points for training the model
+    collocation_points = lb + (ub - lb) * lhs(2, N_collocation)                    # Latin Hypercube Sampling
+    training_inputs = np.vstack((sampled_boundary_inputs, collocation_points))     # append the boundary points to the collocation points
+
+    return training_inputs, sampled_boundary_inputs, sampled_boundary_phi
 
 def main(args: argparse.Namespace):
 
@@ -61,6 +69,8 @@ def main(args: argparse.Namespace):
 
     # Generate training data 
     N = 100
+    N_sample = 50
+    N_collocation = 20
     x_min, x_max = 0, 1
     y_min, y_max = 0, 1
     x = torch.linspace(0, 1, N)
@@ -68,21 +78,30 @@ def main(args: argparse.Namespace):
     X, Y = torch.meshgrid(x, y)
     phi = analytical_solution(X, Y)
 
-    haha = training_data(X, Y, phi, N)
+    # Testing data
+    X_u_test = np.hstack((X.reshape(-1, 1), Y.reshape(-1, 1)))
+    u_test = phi.reshape(-1, 1)
+
+    # Training data
+    X_f_train_np_array, X_u_train_np_array, u_train_np_array = training_data(X, Y, phi, N_sample, N_collocation)
     
-    exit()
-    # Domain bounds
-    lb = np.array([-1, -1]) #lower bound
-    ub = np.array([1, 1])  #upper bound
+    # Convert numpy arrays to torch tensors and move them to the device
+    X_f_train = torch.from_numpy(X_f_train_np_array).float().to(device)
+    X_u_train = torch.from_numpy(X_u_train_np_array).float().to(device)
+    u_train = torch.from_numpy(u_train_np_array).float().to(device)
+    X_u_test = torch.from_numpy(X_u_test).float().to(device)
+    u_test = u_test.to(device)
+    f_hat = torch.zeros(X_f_train.shape[0], 1).to(device)
 
-    a_1 = 1 
-    a_2 = 1
+    layers = np.array([2, 50, 50, 50, 1])
 
-    k = 1
+    model = PINN(layers)
+    model.to(device)
+    print(model)
 
-    usol = np.sin(a_1 * np.pi * X) * np.sin(a_2 * np.pi * Y) #solution chosen for convinience  
+    params = list(model.parameters())
+    print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-    u_true = usol.flatten('F')[:,None] 
     exit()
     
     plt.imshow(phi, origin="lower", extent=[x_min, x_max, y_min, y_max])
