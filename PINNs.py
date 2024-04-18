@@ -62,8 +62,6 @@ def main(args: argparse.Namespace):
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    start = time.time()
-
     N_u = 100    # Number of data points for the initial condition
     N_f = 10000  # Number of data points in the domain
 
@@ -102,21 +100,49 @@ def main(args: argparse.Namespace):
     params = list(model.parameters())
     print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
 
-    exit()
+    optimizer = torch.optim.Adam(model.parameters(),
+                                 lr=args.learning_rate,
+                                 betas=(0.9, 0.999),
+                                 eps=1e-08,
+                                 weight_decay=0,
+                                 )
+
+    # Training
+    epochs = args.epochs
+
+    start_time = time.time()
+
+    for epoch in range(epochs):
+
+        """
+        optimizer.zero_grad()
+        u_hat, f_hat = model(X_u_train)
+        loss = torch.mean((u_train - u_hat)**2) + torch.mean(f_hat**2)
+        loss.backward()
+        optimizer.step()
+
+        if epoch % 100 == 0:
+            print(f"Epoch {epoch}, Loss: {loss.item()}")
+        """
     
     plt.imshow(phi, origin="lower", extent=[x_min, x_max, y_min, y_max])
     plt.savefig(os.path.join(args.output_path, "test.png"))
 
-
-    end = time.time()
-    print(f"time taken elapsed: {(end - start):02f}s")
+    end_time = time.time()
+    print(f"training time elapsed: {(end_time - start_time):02f}s")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Physics Informed Neural Networks")
+    
+    # General parameters
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--model_path", type=str, default="./models")
     parser.add_argument("--output_path", type=str, default="./outputs")
     parser.add_argument("--log_path", type=str, default="log path")
+
+    # Training parameters
+    parser.add_argument("--learning_rate", type=float, default=1e-3)
+    parser.add_argument("--epochs", type=int, default=1000)
 
     args = parser.parse_args()
     main(args)
