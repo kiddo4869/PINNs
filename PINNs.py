@@ -5,7 +5,6 @@ import logging
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from pyDOE import lhs               # Latin Hypercube Sampling
 
 import torch
 import torch.nn as nn
@@ -13,7 +12,9 @@ import torch.autograd as autograd
 import torch.optim as optim
 from torch import Tensor
 
+from data.training_data import training_data
 from models.network import NN, PINN, UNET
+from util.util import log_args
 
 # Setting gloabl parameters
 torch.set_default_dtype(torch.float32)
@@ -23,41 +24,70 @@ print("device:", device)
 def analytical_solution(x: Tensor, y: Tensor) -> Tensor:
     return torch.sin(2 * np.pi * x) * torch.sin(2 * np.pi * y)
 
-def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int, N_collocation: int) -> Tuple[Tensor, Tensor, Tensor]:
-    
-    # boundary conditions
-    leftedge_inputs = np.hstack((X[:, 0].reshape(-1, 1), Y[:, 0].reshape(-1, 1)))
-    leftedge_phi = phi[:, 0].reshape(-1, 1)
-    
-    rightedge_inputs = np.hstack((X[:, -1].reshape(-1, 1), Y[:, -1].reshape(-1, 1)))
-    rightedge_phi = phi[:, -1].reshape(-1, 1)
-    
-    topedge_inputs = np.hstack((X[0, :].reshape(-1, 1), Y[0, :].reshape(-1, 1)))
-    topedge_phi = phi[0, :].reshape(-1, 1)
-    
-    bottomedge_inputs = np.hstack((X[-1, :].reshape(-1, 1), Y[-1, :].reshape(-1, 1)))
-    bottomedge_phi = phi[-1, :].reshape(-1, 1)
+def plot_solution(u_pred: Tensor, X_u_train: Tensor, u_train: Tensor, output_path):
 
-    boundary_inputs = np.vstack([leftedge_inputs, rightedge_inputs, topedge_inputs, bottomedge_inputs])
-    boundary_phi = np.vstack([leftedge_phi, rightedge_phi, topedge_phi, bottomedge_phi])
+    #Ground truth
+    fig_1 = plt.figure(1, figsize=(18, 5))
+    plt.subplot(1, 3, 1)
+    plt.pcolor(x_1, x_2, usol, cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title('Ground Truth $u(x_1,x_2)$', fontsize=15)
 
-    # sample random points in the domain
-    idx = np.random.choice(boundary_inputs.shape[0], N_sample, replace=False)
+    # Prediction
+    plt.subplot(1, 3, 2)
+    plt.pcolor(x_1, x_2, u_pred, cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title('Predicted $\hat u(x_1,x_2)$', fontsize=15)
 
-    sampled_boundary_inputs = boundary_inputs[idx, :]
-    sampled_boundary_phi = boundary_phi[idx, :]
+    # Error
+    plt.subplot(1, 3, 3)
+    plt.pcolor(x_1, x_2, np.abs(usol - u_pred), cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title(r'Absolute error $|u(x_1,x_2)- \hat u(x_1,x_2)|$', fontsize=15)
+    plt.tight_layout()
 
-    # Domain bounds
-    lb = np.array([0, 0])  # lower bound
-    ub = np.array([1, 1])  # upper bound
+    plt.savefig(os.path.join(output_path, "Helmholtz_non_stiff.png"), dpi = 500, bbox_inches='tight')
 
-    # Collocation points for training the model
-    collocation_points = lb + (ub - lb) * lhs(2, N_collocation)                    # Latin Hypercube Sampling
-    training_inputs = np.vstack((sampled_boundary_inputs, collocation_points))     # append the boundary points to the collocation points
+def solutionplot(u_pred,X_u_train,u_train):
 
-    return training_inputs, sampled_boundary_inputs, sampled_boundary_phi
+    #Ground truth
+    fig_1 = plt.figure(1, figsize=(18, 5))
+    plt.subplot(1, 3, 1)
+    plt.pcolor(x_1, x_2, usol, cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title('Ground Truth $u(x_1,x_2)$', fontsize=15)
+
+    # Prediction
+    plt.subplot(1, 3, 2)
+    plt.pcolor(x_1, x_2, u_pred, cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title('Predicted $\hat u(x_1,x_2)$', fontsize=15)
+
+    # Error
+    plt.subplot(1, 3, 3)
+    plt.pcolor(x_1, x_2, np.abs(usol - u_pred), cmap='jet')
+    plt.colorbar()
+    plt.xlabel(r'$x_1$', fontsize=18)
+    plt.ylabel(r'$x_2$', fontsize=18)
+    plt.title(r'Absolute error $|u(x_1,x_2)- \hat u(x_1,x_2)|$', fontsize=15)
+    plt.tight_layout()
+
+    plt.savefig('Helmholtz_non_stiff.png', dpi = 500, bbox_inches='tight')
 
 def main(args: argparse.Namespace):
+
+    logger = logging.basicConfig(filename=os.path.join(args.log_path, "log"), level=logging.INFO)
+    log_args(args)
 
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
@@ -95,10 +125,12 @@ def main(args: argparse.Namespace):
 
     model = PINN(layers)
     model.to(device)
-    print(model)
+    logging.info("\n----------model----------")
+    logging.info(model)
 
     params = list(model.parameters())
-    print("Number of parameters: ", sum(p.numel() for p in model.parameters() if p.requires_grad))
+    num_of_params = int(sum(p.numel() for p in model.parameters() if p.requires_grad))
+    logging.info(f"Number of parameters: {num_of_params}")
 
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=args.learning_rate,
@@ -106,24 +138,30 @@ def main(args: argparse.Namespace):
                                  eps=1e-08,
                                  weight_decay=0,
                                  )
+    logging.info(optimizer)
 
     # Training
     epochs = args.epochs
 
     start_time = time.time()
 
-    for epoch in range(epochs):
+    # debugging
 
-        """
+    for epoch in range(1, epochs + 1):
+
+        train_loss = []
+        valid_loss = []
+
+        #for phase in ["train", "valid"]:
+
         optimizer.zero_grad()
-        u_hat, f_hat = model(X_u_train)
-        loss = torch.mean((u_train - u_hat)**2) + torch.mean(f_hat**2)
+        loss = model.loss(X_u_train, u_train)
         loss.backward()
         optimizer.step()
-
-        if epoch % 100 == 0:
-            print(f"Epoch {epoch}, Loss: {loss.item()}")
-        """
+        
+        if epoch % args.save_epoch_freq == 0:
+            print(f"Epoch {epoch}/{epochs}, Loss: {loss.item():05f}")
+            train_loss.append(loss.item())
     
     plt.imshow(phi, origin="lower", extent=[x_min, x_max, y_min, y_max])
     plt.savefig(os.path.join(args.output_path, "test.png"))
@@ -138,11 +176,12 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--model_path", type=str, default="./models")
     parser.add_argument("--output_path", type=str, default="./outputs")
-    parser.add_argument("--log_path", type=str, default="log path")
+    parser.add_argument("--log_path", type=str, default="./log")
 
     # Training parameters
     parser.add_argument("--learning_rate", type=float, default=1e-3)
     parser.add_argument("--epochs", type=int, default=1000)
+    parser.add_argument("--save_epoch_freq", type=int, default=1)
 
     args = parser.parse_args()
     main(args)

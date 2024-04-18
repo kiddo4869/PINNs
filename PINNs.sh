@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python PINNs.py
+python PINNs.py --epochs 11
