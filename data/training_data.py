@@ -29,10 +29,10 @@ def training_data(X: Tensor, Y: Tensor, phi: Tensor, N_sample: int, N_collocatio
 
     # Domain bounds
     lb = np.array([0, 0])  # lower bound
-    ub = np.array([1, 1])  # upper bound
+    ub = np.array([1.0, 1.0])  # upper bound
 
     # Collocation points for training the model
     collocation_points = lb + (ub - lb) * lhs(2, N_collocation)                    # Latin Hypercube Sampling
     training_inputs = np.vstack((sampled_boundary_inputs, collocation_points))     # append the boundary points to the collocation points
 
-    return training_inputs, sampled_boundary_inputs, sampled_boundary_phi
+    return training_inputs, sampled_boundary_inputs, sampled_boundary_phi, collocation_points
