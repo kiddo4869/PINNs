@@ -15,7 +15,7 @@ from torch import Tensor
 from data.training_data import training_data
 from models.network import PINN, UNET
 from util.util import log_args
-from util.plotting import plot_solution
+from util.plotting import plot_solution, plot_boundary_collocation_points
 
 # Setting gloabl parameters
 torch.set_default_dtype(torch.float32)
@@ -54,11 +54,10 @@ def main(args: argparse.Namespace):
     # Training data
     X_f_train_np_array, X_u_train_np_array, u_train_np_array, collocation_points = training_data(X, Y, phi, N_boundary, N_collocation)
     
-    # plot X_f_train_np_array
-    plt.figure(figsize=(6, 6))
-    plt.scatter(X_u_train_np_array[:, 0], X_u_train_np_array[:, 1], c="b", s=0.5, marker="x", label="Boundary points")
-    plt.scatter(collocation_points[:, 0], collocation_points[:, 1], c="r", s=0.5, marker="o", label="Collocation points")
-    plt.savefig(os.path.join(args.output_path, "boundary_collocation_points.png"))
+    # plot boundary and collocation points
+    plot_boundary_collocation_points(X_u_train_np_array, collocation_points, args.output_path)
+
+    exit()
 
     # Convert numpy arrays to torch tensors and move them to the device
     X_f_train = torch.from_numpy(X_f_train_np_array).float().to(device)     # shape = (N_boundary + N_collocation, 2)

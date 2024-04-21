@@ -14014,3 +14014,99 @@ Parameter Group 0
     maximize: False
     weight_decay: 0.0
 )
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs
+log_path: ./log
+debug: False
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 100000
+log_epoch_freq: 100
+save_epoch_freq: 5000
