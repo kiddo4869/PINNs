@@ -6,7 +6,6 @@ import logging
 import time
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
 
 import torch
 import torch.nn as nn
@@ -16,7 +15,7 @@ from torch import Tensor
 from data.data_processing import data_processing
 from models.network import PINN, UNET
 from util.util import log_args
-from util.plotting import plot_solution, plot_boundary_collocation_points
+from util.plotting import plot_solution, plot_boundary_collocation_points, save_gif_PIL
 
 # Setting gloabl parameters
 torch.set_default_dtype(torch.float32)
@@ -44,6 +43,11 @@ def main(args: argparse.Namespace):
     N_boundary_val = 100                 # Number of validation data
     N_collocation_val = 100              # Number of validation collocation points
 
+    if args.pinn:
+        args.output_path = "./outputs/pinn"
+    else:
+        args.output_path = "./outputs/nn"
+
     # debugging
     if args.debug:
         N = 50
@@ -51,10 +55,13 @@ def main(args: argparse.Namespace):
         N_collocation = 100
         N_boundary_val = 10
         N_collocation_val = 10
-        args.epochs = 200
+        args.epochs = 1000
         args.log_epoch_freq = 10
         args.save_epoch_freq = 10
         args.output_path = "./outputs/debug"
+
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path, os.path.join(args.output_path, "snapshots"))
 
     x_min, x_max = 0, 1
     y_min, y_max = 0, 1
@@ -85,8 +92,10 @@ def main(args: argparse.Namespace):
     X_flatten = X.reshape(-1, 1).to(device)
     Y_flatten = Y.reshape(-1, 1).to(device)
 
+    phi_gpu = phi.to(device)
+
     # Model
-    model = PINN(np.array(args.layers))
+    model = PINN(np.array(args.layers), args.pinn)
     model.to(device)
     logging.info("\n----------model----------")
     logging.info(model)
@@ -109,9 +118,14 @@ def main(args: argparse.Namespace):
     epochs = args.epochs
     start_time = time.time()
 
+    best_loss = np.inf
+    epochs_no_improve = 0
+    loss_function = nn.MSELoss(reduction="mean")
+
     train_loss = []
     valid_loss = []
     epoch_list = []
+    files = []
 
     for epoch in range(1, epochs + 1):
 
@@ -125,21 +139,39 @@ def main(args: argparse.Namespace):
         loss_train.backward()
         optimizer.step()
 
-        # Validation phase
-        if epoch % args.log_epoch_freq == 0:
-            model.eval()
-            loss_val = model.loss(X_u_val, u_val, X_f_val)
+        if args.log_loss:
+            # Validation phase
+            if epoch % args.log_epoch_freq == 0:
+                model.eval()
+                loss_val = model.loss(X_u_val, u_val, X_f_val)
 
-            print(f"Epoch {epoch}/{epochs}, train loss: {loss_train.item():.9f}, valid loss: {loss_val.item():.9f}")
-            train_loss.append(loss_train.item())
-            valid_loss.append(loss_val.item())
+                print(f"Epoch {epoch}/{epochs}, train loss: {loss_train.item():.9f}, valid loss: {loss_val.item():.9f}")
+                train_loss.append(loss_train.item())
+                valid_loss.append(loss_val.item())
 
-        # Save the solution
-        if epoch % args.save_epoch_freq == 0:
-            with torch.no_grad():
-                u_pred = model(X_flatten, Y_flatten)
-                u_pred = u_pred.detach().cpu().numpy().reshape(N, N)
-                plot_solution(epoch, u_pred, phi, X, Y, args.output_path)
+                # Early stopping
+                if args.early_stopping:
+                    current_loss = loss_val.item()
+                    if current_loss < best_loss - args.tolerance:
+                        best_loss = current_loss
+                        epochs_no_improve = 0
+                    else:
+                        epochs_no_improve += 1
+                        if epochs_no_improve == args.patience:
+                            print(f"Early stopping at epoch {epoch}")
+                            break
+
+        if args.log_sol:
+            # Save the solution
+            if epoch % args.save_epoch_freq == 0:
+                with torch.no_grad():
+                    u_pred = model(X_flatten, Y_flatten).reshape(N, N)
+                    test_loss = loss_function(u_pred, phi_gpu).item()
+                    
+                    u_pred = u_pred.detach().cpu().numpy()
+                    plot_solution(epoch, u_pred, phi, X, Y, test_loss, os.path.join(args.output_path, "snapshots"))
+                    file = os.path.join(args.output_path, "snapshots", f"prediction_epoch_{epoch}.png")
+                    files.append(file)
 
         # after some epochs, we can reduce the learning rate
         if epoch == 20000:
@@ -149,19 +181,24 @@ def main(args: argparse.Namespace):
     end_time = time.time()
     print(f"training time elapsed: {(end_time - start_time):02f}s")
 
-    # testing
-    u_pred = model(X_flatten, Y_flatten)
-    u_pred = u_pred.detach().cpu().numpy().reshape(N, N)
-    plot_solution(epoch, u_pred, phi, X, Y, args.output_path)
+    if args.log_sol:
+        save_gif_PIL(os.path.join(args.output_path, "prediction.gif"), files)
 
-    with torch.no_grad():
-        plt.figure(figsize=(10, 6))
-        plt.plot(epoch_list, train_loss, label="train loss")
-        plt.plot(epoch_list, valid_loss, label="valid loss")
-        plt.legend()
-        plt.xlabel("Epoch")
-        plt.ylabel("Losses")
-        plt.savefig(os.path.join(args.output_path, "losses.png"))
+    # testing
+    u_pred = model(X_flatten, Y_flatten).reshape(N, N)
+    test_loss = loss_function(u_pred, phi_gpu).item()
+    u_pred = u_pred.detach().cpu().numpy()
+    plot_solution(epoch, u_pred, phi, X, Y, test_loss, args.output_path)
+
+    if args.log_loss:
+        with torch.no_grad():
+            plt.figure(figsize=(10, 6))
+            plt.plot(epoch_list, train_loss, label="train loss")
+            plt.plot(epoch_list, valid_loss, label="valid loss")
+            plt.legend(fontsize=15)
+            plt.xlabel("Epoch", fontsize=15)
+            plt.ylabel("Losses", fontsize=15)
+            plt.savefig(os.path.join(args.output_path, "losses.png"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Physics Informed Neural Networks")
@@ -172,6 +209,9 @@ if __name__ == "__main__":
     parser.add_argument("--output_path", type=str, default="./outputs")
     parser.add_argument("--log_path", type=str, default="./log")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--pinn", action="store_true")
+    parser.add_argument("--log_loss", action="store_true")
+    parser.add_argument("--log_sol", action="store_true")
 
     # Training parameters
     parser.add_argument("--layers", type=json.loads, default=[2,20,20,20,20,1])
@@ -179,6 +219,9 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=1000)
     parser.add_argument("--log_epoch_freq", type=int, default=100)
     parser.add_argument("--save_epoch_freq", type=int, default=1000)
+    parser.add_argument("--early_stopping", action="store_true")
+    parser.add_argument("--patience", type=int, default=10)
+    parser.add_argument("--tolerance", type=float, default=1e-5)
 
     args = parser.parse_args()
     main(args)

@@ -4,9 +4,10 @@ import torch.autograd as autograd
 import numpy as np
 
 class PINN(nn.Module):
-    def __init__(self, layers: list[int]):
+    def __init__(self, layers: list[int], pinn: bool):
         super(PINN, self).__init__()
         self.layers = layers
+        self.pinn = pinn
 
         # activation function
         # if you use 2nd order derivatives for ReLU activations, you should have all zeros
@@ -98,11 +99,15 @@ class PINN(nn.Module):
         x = X_u_train[:, 0].reshape(-1, 1)
         y = X_u_train[:, 1].reshape(-1, 1)
         phi = u_train
-        x_collocation = X_f_train[:, 0].reshape(-1, 1)
-        y_collocation = X_f_train[:, 1].reshape(-1, 1)
 
-        weight = 0.5
-        return self.loss_BC(x, y, phi) + weight * self.loss_PDE(x_collocation, y_collocation)
+        if not self.pinn:
+            return self.loss_BC(x, y, phi)
+        else:
+            x_collocation = X_f_train[:, 0].reshape(-1, 1)
+            y_collocation = X_f_train[:, 1].reshape(-1, 1)
+
+            weight = 0.5
+            return self.loss_BC(x, y, phi) + weight * self.loss_PDE(x_collocation, y_collocation)
 
     def closure(self):
         pass
