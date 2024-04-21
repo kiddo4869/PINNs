@@ -53,7 +53,6 @@ def plot_solution(epoch: int, u_pred: Tensor, u_sol: Tensor, x: Tensor, y: Tenso
     ax3.set_aspect("equal", adjustable = "box")
 
     plt.suptitle(f"\nTraining epoch: {epoch} | MSE: {loss:.5e}\n", fontsize = 15)
-    #   plt.tight_layout()
 
     plt.savefig(os.path.join(output_path, f"prediction_epoch_{epoch}.png"), dpi = 100, bbox_inches = "tight")
 

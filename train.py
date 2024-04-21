@@ -28,9 +28,6 @@ def analytical_solution(X: Tensor, Y: Tensor) -> Tensor:
 
 def main(args: argparse.Namespace):
 
-    logger = logging.basicConfig(filename=os.path.join(args.log_path, "Log.log"), level=logging.INFO)
-    log_args(args)
-
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
@@ -42,11 +39,6 @@ def main(args: argparse.Namespace):
     N_collocation = 600                  # Number of training collocation points
     N_boundary_val = 100                 # Number of validation data
     N_collocation_val = 100              # Number of validation collocation points
-
-    if args.pinn:
-        args.output_path = "./outputs/pinn"
-    else:
-        args.output_path = "./outputs/nn"
 
     # debugging
     if args.debug:
@@ -60,8 +52,11 @@ def main(args: argparse.Namespace):
         args.save_epoch_freq = 10
         args.output_path = "./outputs/debug"
 
-    if not os.path.exists(args.output_path):
-        os.makedirs(args.output_path, os.path.join(args.output_path, "snapshots"))
+    os.makedirs(args.output_path, exist_ok=True)
+    os.makedirs(os.path.join(args.output_path, "snapshots"), exist_ok=True)
+
+    logger = logging.basicConfig(filename=os.path.join(args.output_path, "Log.log"), level=logging.INFO)
+    log_args(args)
 
     x_min, x_max = 0, 1
     y_min, y_max = 0, 1
@@ -72,9 +67,18 @@ def main(args: argparse.Namespace):
     X, Y = torch.meshgrid(x, y, indexing="ij")
     phi = analytical_solution(X, Y)
 
+    # Add noise
+    if args.noise_level > 0:
+        noise = args.noise_level * torch.std(phi) * torch.randn_like(phi)
+        phi_noisy = phi + noise
+
     # Training and validation data
-    training_inputs, training_bps, training_bphi, training_cps = data_processing(X, Y, phi, N_boundary, N_collocation, ub, lb)
-    validation_inputs, validation_bps, validation_bphi, validation_cps = data_processing(X, Y, phi, N_boundary_val, N_collocation_val, ub, lb)
+    if args.noise_level > 0:
+        training_inputs, training_bps, training_bphi, training_cps = data_processing(X, Y, phi_noisy, N_boundary, N_collocation, ub, lb)
+        validation_inputs, validation_bps, validation_bphi, validation_cps = data_processing(X, Y, phi_noisy, N_boundary_val, N_collocation_val, ub, lb)
+    else:
+        training_inputs, training_bps, training_bphi, training_cps = data_processing(X, Y, phi, N_boundary, N_collocation, ub, lb)
+        validation_inputs, validation_bps, validation_bphi, validation_cps = data_processing(X, Y, phi, N_boundary_val, N_collocation_val, ub, lb)
     
     # plot boundary and collocation points
     plot_boundary_collocation_points(training_bps, training_cps, args.output_path, "Training Boundary and Collocation Points")
@@ -174,12 +178,17 @@ def main(args: argparse.Namespace):
                     files.append(file)
 
         # after some epochs, we can reduce the learning rate
-        if epoch == 20000:
+        if epoch == 40000:
             for param_group in optimizer.param_groups:
                 param_group["lr"] = 0.0001
 
+        if epoch == 60000:
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = 0.00001
+
     end_time = time.time()
     print(f"training time elapsed: {(end_time - start_time):02f}s")
+    logging.info(f"training time elapsed: {(end_time - start_time):02f}s")
 
     if args.log_sol:
         save_gif_PIL(os.path.join(args.output_path, "prediction.gif"), files)
@@ -207,11 +216,11 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--model_path", type=str, default="./models")
     parser.add_argument("--output_path", type=str, default="./outputs")
-    parser.add_argument("--log_path", type=str, default="./log")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--pinn", action="store_true")
     parser.add_argument("--log_loss", action="store_true")
     parser.add_argument("--log_sol", action="store_true")
+    parser.add_argument("--noise_level", type=float, default=0.0)
 
     # Training parameters
     parser.add_argument("--layers", type=json.loads, default=[2,20,20,20,20,1])

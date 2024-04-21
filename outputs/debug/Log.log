@@ -1,0 +1,143 @@
+INFO:root:
+----------parameters----------
+seed: 4869
+model_path: ./models
+output_path: ./outputs/debug
+debug: True
+pinn: True
+log_loss: False
+log_sol: True
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 1000
+log_epoch_freq: 10
+save_epoch_freq: 10
+early_stopping: False
+patience: 10
+tolerance: 1e-05
+INFO:root:
+----------model----------
+INFO:root:PINN(
+  (activation): Tanh()
+  (loss_function): MSELoss()
+  (linears): ModuleList(
+    (0): Linear(in_features=2, out_features=20, bias=True)
+    (1-2): 2 x Linear(in_features=20, out_features=20, bias=True)
+    (3): Linear(in_features=20, out_features=1, bias=True)
+  )
+  (batch_norms): ModuleList(
+    (0-2): 3 x BatchNorm1d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)
+INFO:root:Number of parameters: 1043
+INFO:root:Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+    eps: 1e-08
+    foreach: None
+    fused: None
+    lr: 0.001
+    maximize: False
+    weight_decay: 0.0
+)
+INFO:root:
+----------parameters----------
+seed: 0
+model_path: ./models
+output_path: ./outputs/debug
+debug: True
+pinn: True
+log_loss: False
+log_sol: True
+noise_level: 0.01
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 1000
+log_epoch_freq: 10
+save_epoch_freq: 10
+early_stopping: False
+patience: 10
+tolerance: 1e-05
+INFO:root:
+----------model----------
+INFO:root:PINN(
+  (activation): Tanh()
+  (loss_function): MSELoss()
+  (linears): ModuleList(
+    (0): Linear(in_features=2, out_features=20, bias=True)
+    (1-2): 2 x Linear(in_features=20, out_features=20, bias=True)
+    (3): Linear(in_features=20, out_features=1, bias=True)
+  )
+  (batch_norms): ModuleList(
+    (0-2): 3 x BatchNorm1d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)
+INFO:root:Number of parameters: 1043
+INFO:root:Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+    eps: 1e-08
+    foreach: None
+    fused: None
+    lr: 0.001
+    maximize: False
+    weight_decay: 0.0
+)
+INFO:root:
+----------parameters----------
+seed: 0
+model_path: ./models
+output_path: ./outputs/debug
+debug: True
+pinn: True
+log_loss: True
+log_sol: True
+noise_level: 0.01
+layers: [2, 20, 20, 20, 1]
+learning_rate: 0.001
+epochs: 1000
+log_epoch_freq: 10
+save_epoch_freq: 10
+early_stopping: False
+patience: 10
+tolerance: 1e-05
+INFO:root:
+----------model----------
+INFO:root:PINN(
+  (activation): Tanh()
+  (loss_function): MSELoss()
+  (linears): ModuleList(
+    (0): Linear(in_features=2, out_features=20, bias=True)
+    (1-2): 2 x Linear(in_features=20, out_features=20, bias=True)
+    (3): Linear(in_features=20, out_features=1, bias=True)
+  )
+  (batch_norms): ModuleList(
+    (0-2): 3 x BatchNorm1d(20, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (3): BatchNorm1d(1, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  )
+  (dropout): Dropout(p=0.0, inplace=False)
+)
+INFO:root:Number of parameters: 1043
+INFO:root:Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    capturable: False
+    differentiable: False
+    eps: 1e-08
+    foreach: None
+    fused: None
+    lr: 0.001
+    maximize: False
+    weight_decay: 0.0
+)
